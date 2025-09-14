@@ -279,6 +279,7 @@
       'video/mp4','video/mov','video/avi','video/wmv','video/flv'
     ]; // ให้สอดคล้องกับ Code.gs (CONFIG.ALLOWED_TYPES) :contentReference[oaicite:2]{index=2}
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB ตาม Code.gs :contentReference[oaicite:3]{index=3}
+    const CONCURRENCY = 2;  // แนะนำ 2–4 ตามความแรงเน็ต/เครื่องผู้ใช้
 
     // ===== STATE =====
     let currentFolder = null;
@@ -482,62 +483,83 @@
     }
 
     async function startUpload() {
-      if (isUploading || uploadQueue.length===0 || !currentFolder) return;
-      isUploading = true;
-      const btn = document.getElementById('startUploadBtn');
-      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังอัพโหลด...';
+  if (isUploading || uploadQueue.length === 0 || !currentFolder) return;
 
-      let success = 0, fail = 0;
-      for (const item of uploadQueue) {
-        if (item.status === 'pending' || item.status === 'failed') {
-          const ok = await uploadOne(item);
-          ok ? success++ : fail++;
-        }
-      }
-      isUploading = false;
-      btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>อัพโหลดเสร็จสิ้น';
+  isUploading = true;
+  const btn = document.getElementById('startUploadBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังอัพโหลด...'; }
 
-      await loadFolders(); // refresh counter/fileCount
-      await loadStats();
+  // เลือกเฉพาะไฟล์ที่ยังไม่ได้อัป/เคยล้มเหลว
+  const targets = uploadQueue.filter(i => i.status === 'pending' || i.status === 'failed');
 
-      if (fail === 0) {
-        Swal.fire({icon:'success', title:'อัพโหลดสำเร็จ', text:`อัพโหลดไฟล์ทั้งหมด ${success} ไฟล์เรียบร้อยแล้ว`});
-        uploadQueue = [];
-        hideUploadModal();
-      } else {
-        Swal.fire({icon:'warning', title:'อัพโหลดเสร็จสิ้น', text:`สำเร็จ ${success} ไฟล์, ล้มเหลว ${fail} ไฟล์`});
-      }
-    }
+  let success = 0, fail = 0;
+  // สร้าง task ต่อไฟล์ แล้วรันแบบขนานจำกัดจำนวนด้วย runWithConcurrency()
+  const tasks = targets.map(item => async () => {
+    const ok = await uploadOne(item); // ใช้ uploadOne() ที่ปรับให้ไวขึ้นด้านล่าง
+    if (ok) success++; else fail++;
+  });
+
+  await runWithConcurrency(tasks, CONCURRENCY);
+
+  isUploading = false;
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>อัพโหลดเสร็จสิ้น'; }
+
+  // รีเฟรชข้อมูลสรุป
+  await loadFolders();
+  await loadStats();
+
+  if (fail === 0) {
+    Swal.fire({icon:'success', title:'อัพโหลดสำเร็จ', text:`อัปโหลดไฟล์ทั้งหมด ${success} ไฟล์เรียบร้อยแล้ว`});
+    uploadQueue = [];
+    hideUploadModal();
+  } else {
+    Swal.fire({icon:'warning', title:'อัพโหลดเสร็จสิ้น', text:`สำเร็จ ${success} ไฟล์, ล้มเหลว ${fail} ไฟล์`});
+  }
+}
+
 
     async function uploadOne(item) {
-      try {
-        item.status='uploading'; item.progress=0; displayUploadQueue();
+  try {
+    // อัปเดตสถานะเริ่มอัปโหลด
+    item.status = 'uploading';
+    item.progress = 0;
+    displayUploadQueue();
 
-        // อ่านไฟล์ -> base64 (ไม่เอา dataURL prefix)
-        const base64 = await fileToBase64(item.file);
-        // progress ดูแบบ mock ระหว่างรอ network
-        for (let p=10;p<=90;p+=20){ item.progress=p; displayUploadQueue(); await sleep(120); }
+    // แปลงไฟล์เป็น base64 (ไม่บีบอัด, ส่งไฟล์จริง)
+    const base64 = await fileToBase64(item.file);
 
-        const resp = await apiPost({
-          action:'uploadFile',
-          folderId: currentFolder.id,
-          fileName: item.name,
-          fileType: item.type,
-          fileSize: item.size,
-          fileData: base64 // ส่งเฉพาะส่วน base64 ตาม Code.gs ที่ใช้ Utilities.base64Decode(data) :contentReference[oaicite:4]{index=4}
-        });
-        if (!resp.success) throw new Error(resp.message||'อัปโหลดไม่สำเร็จ');
+    // อัปเดต progress ให้ผู้ใช้เห็นคร่าว ๆ ระหว่างส่ง (ไม่มีหน่วงที่ไม่จำเป็น)
+    item.progress = 50;
+    displayUploadQueue();
 
-        item.progress=100; item.status='completed'; displayUploadQueue();
-        addRecentActivity('อัพโหลดไฟล์', `✅ ${item.name}`);
-        return true;
-      } catch(e){
-        console.error(e);
-        item.status='failed'; displayUploadQueue();
-        addRecentActivity('อัพโหลดล้มเหลว', `❌ ${item.name}`);
-        return false;
-      }
-    }
+    // ส่งไป Apps Script
+    const resp = await apiPost({
+      action: 'uploadFile',
+      folderId: currentFolder.id,
+      fileName: item.name,
+      fileType: item.type,
+      fileSize: item.size,
+      fileData: base64
+    });
+
+    if (!resp.success) throw new Error(resp.message || 'อัปโหลดไม่สำเร็จ');
+
+    // เสร็จสมบูรณ์
+    item.progress = 100;
+    item.status = 'completed';
+    displayUploadQueue();
+    addRecentActivity('อัพโหลดไฟล์', `✅ ${item.name}`);
+    return true;
+
+  } catch (e) {
+    console.error(e);
+    item.status = 'failed';
+    displayUploadQueue();
+    addRecentActivity('อัพโหลดล้มเหลว', `❌ ${item.name}`);
+    return false;
+  }
+}
+
 
     // ====== STATS ======
     function updateStatsFromFolders() {
@@ -588,6 +610,29 @@
       // keep last 5
       while (container.children.length > 5) container.removeChild(container.lastChild);
     }
+
+    // รันงานแบบขนานจำกัดจำนวน (เช่น 3 งานพร้อมกัน)
+async function runWithConcurrency(taskFns, limit) {
+  const pool = [];
+  let idx = 0;
+
+  async function worker() {
+    while (idx < taskFns.length) {
+      const current = idx++;
+      try {
+        await taskFns[current]();
+      } catch (e) {
+        // กลืน error ใน worker เพื่อให้เพื่อนๆ ทำต่อ
+        console.error('concurrent task error:', e);
+      }
+    }
+  }
+
+  const n = Math.min(limit, taskFns.length);
+  for (let i = 0; i < n; i++) pool.push(worker());
+  await Promise.all(pool);
+}
+
 
     function getFileIcon(type){ if(type.startsWith('image/')) return 'fa-image'; if(type.startsWith('video/')) return 'fa-video'; return 'fa-file'; }
     function getStatusIcon(status){
