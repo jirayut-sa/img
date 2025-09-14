@@ -237,10 +237,9 @@
       <div class="text-sm text-gray-600">
         <span id="uploadProgress">0</span> / <span id="uploadTotal">0</span> ไฟล์
       </div>
-      <button id="startUploadBtn" onclick="startUpload()"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-        <i class="fas fa-play mr-2"></i>เริ่มอัพโหลด
-      </button>
+      
+      <button id="startUploadBtn" onclick="startUploadBatch()" class="...">เริ่มอัพโหลด</button>
+
       <button onclick="hideUploadModal()" class="text-gray-400 hover:text-gray-600">
         <i class="fas fa-times text-xl"></i>
       </button>
@@ -280,6 +279,8 @@
     ]; // ให้สอดคล้องกับ Code.gs (CONFIG.ALLOWED_TYPES) :contentReference[oaicite:2]{index=2}
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB ตาม Code.gs :contentReference[oaicite:3]{index=3}
     const CONCURRENCY = 2;  // แนะนำ 2–4 ตามความแรงเน็ต/เครื่องผู้ใช้
+    const MAX_BATCH_BYTES = 10 * 1024 * 1024; // ~10MB ต่อคำขอ (ปรับได้ 5–15MB)
+    const BATCH_CONCURRENCY = 2;              // ส่งได้หลายแบตช์พร้อมกัน
 
     // ===== STATE =====
     let currentFolder = null;
@@ -516,6 +517,133 @@
     Swal.fire({icon:'warning', title:'อัพโหลดเสร็จสิ้น', text:`สำเร็จ ${success} ไฟล์, ล้มเหลว ${fail} ไฟล์`});
   }
 }
+
+
+async function startUploadBatch() {
+  if (isUploading || uploadQueue.length === 0 || !currentFolder) return;
+  isUploading = true;
+
+  const btn = document.getElementById('startUploadBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังอัพโหลด (แบตช์)...'; }
+
+  // mark เป็นกำลังอัปโหลด
+  const pending = uploadQueue.filter(i => i.status === 'pending' || i.status === 'failed');
+  for (const it of pending) { it.status = 'uploading'; it.progress = 0; }
+  displayUploadQueue();
+
+  // เตรียมแบตช์
+  const batches = [];
+  let batch = [], batchBytes = 0;
+
+  for (const item of pending) {
+    const base64 = await fileToBase64(item.file);          // ไม่บีบไฟล์
+    const estBytes = Math.floor(base64.length * 3 / 4);    // ประมาณขนาดจริงหลัง base64 decode
+
+    // ถ้าใส่ไฟล์นี้แล้วเกินลิมิต → ปิดแบตช์ปัจจุบันก่อน
+    if (batch.length > 0 && (batchBytes + estBytes) > MAX_BATCH_BYTES) {
+      batches.push(batch);
+      batch = [];
+      batchBytes = 0;
+    }
+
+    batch.push({
+      item,                                     // อ้างกลับไปอัปเดตสถานะ
+      fileName: item.name,
+      fileType: item.type,
+      fileSize: item.size,
+      fileData: base64
+    });
+    batchBytes += estBytes;
+  }
+  if (batch.length) batches.push(batch);
+
+  // ส่งหลายแบตช์พร้อมกันแบบจำกัดจำนวน
+  await runWithConcurrency(
+    batches.map((oneBatch, idx) => async () => {
+      await sendOneBatch(oneBatch, idx + 1, batches.length);
+    }),
+    BATCH_CONCURRENCY
+  );
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>อัพโหลดเสร็จสิ้น'; }
+
+  // รีเฟรชข้อมูลสรุป
+  await loadFolders();
+  await loadStats();
+
+  // เช็กผล
+  const fail = uploadQueue.filter(i => i.status === 'failed').length;
+  if (fail === 0) {
+    Swal.fire({icon:'success', title:'อัพโหลดสำเร็จ', text:`อัปโหลดไฟล์ทั้งหมดเรียบร้อย`});
+    uploadQueue = [];
+    hideUploadModal();
+  } else {
+    const ok = uploadQueue.filter(i => i.status === 'completed').length;
+    Swal.fire({icon:'warning', title:'อัพโหลดเสร็จสิ้น', text:`สำเร็จ ${ok} ไฟล์, ล้มเหลว ${fail} ไฟล์`});
+  }
+  isUploading = false;
+}
+
+// ส่งแบตช์เดียว
+async function sendOneBatch(oneBatch, batchNo, batchTotal) {
+  // อัปเดต progress คร่าว ๆ ให้ item ในแบตช์
+  for (const x of oneBatch) { x.item.progress = 30; }
+  displayUploadQueue();
+
+  try {
+    const resp = await apiPost({
+      action: 'uploadMany',
+      folderId: currentFolder.id,
+      files: oneBatch.map(x => ({
+        fileName: x.fileName,
+        fileType: x.fileType,
+        fileSize: x.fileSize,
+        fileData: x.fileData
+      }))
+    });
+
+    if (!resp.success || !resp.data || !Array.isArray(resp.data.results)) {
+      throw new Error(resp.message || 'batch failed');
+    }
+
+    // อัปเดตผลลัพธ์รายไฟล์
+    resp.data.results.forEach((r, i) => {
+      const itm = oneBatch[i].item;
+      if (r && r.ok) {
+        itm.progress = 100;
+        itm.status = 'completed';
+        addRecentActivity('อัพโหลดไฟล์', `✅ ${itm.name}`);
+      } else {
+        itm.status = 'failed';
+        addRecentActivity('อัพโหลดล้มเหลว', `❌ ${itm.name}`);
+      }
+    });
+  } catch (e) {
+    console.error('sendOneBatch error:', e);
+    // ทั้งแบตช์ล้มเหลว
+    for (const x of oneBatch) {
+      x.item.status = 'failed';
+    }
+  } finally {
+    displayUploadQueue();
+  }
+}
+
+/** ตัวช่วยรันงานแบบขนานจำกัดจำนวน */
+async function runWithConcurrency(taskFns, limit) {
+  const pool = [];
+  let idx = 0;
+  async function worker() {
+    while (idx < taskFns.length) {
+      const cur = idx++;
+      try { await taskFns[cur](); } catch (e) { console.error(e); }
+    }
+  }
+  const n = Math.min(limit, taskFns.length);
+  for (let i = 0; i < n; i++) pool.push(worker());
+  await Promise.all(pool);
+}
+
 
 
     async function uploadOne(item) {
