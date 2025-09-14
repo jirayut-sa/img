@@ -253,13 +253,21 @@
           <h4 class="text-lg font-semibold text-gray-800 mb-4">คิวการอัพโหลด</h4>
           <div id="uploadList" class="space-y-3 max-h-60 overflow-y-auto"></div>
           <div class="mt-4 flex justify-between items-center">
-            <div class="text-sm text-gray-600">
-              <span id="uploadProgress">0</span> / <span id="uploadTotal">0</span> ไฟล์
-            </div>
-            <button id="startUploadBtn" onclick="startUpload()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              <i class="fas fa-play mr-2"></i>เริ่มอัพโหลด
-            </button>
-          </div>
+            <div class="flex items-center space-x-3">
+      <div id="uploadHeaderControls" class="hidden flex items-center space-x-3">
+        <span class="text-sm text-gray-600">
+          <span id="uploadProgress">0</span> / <span id="uploadTotal">0</span> ไฟล์
+        </span>
+        <button id="startUploadBtn" onclick="startUpload()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <i class="fas fa-play mr-2"></i>เริ่มอัพโหลด
+        </button>
+      </div>
+
+      <button onclick="hideUploadModal()" class="text-gray-400 hover:text-gray-600">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
         </div>
       </div>
     </div>
