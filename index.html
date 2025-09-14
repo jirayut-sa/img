@@ -357,7 +357,7 @@
         const resp = await apiPost({ action:'createFolder', folderName, teacherName:'ครูผู้สอน' });
         if (!resp.success) throw new Error(resp.message || 'สร้างโฟลเดอร์ไม่สำเร็จ');
         hideCreateFolderModal();
-        await ; // refresh list
+        await loadFolders(); // refresh list
         Swal.fire({ icon:'success', title:'สร้างโฟลเดอร์สำเร็จ', text:`"${folderName}" ถูกสร้างแล้ว`})
           .then(()=> { const f = folders.find(x=>x.id===resp?.data?.id) || resp.data; if (f) showUploadModal(f); });
         addRecentActivity('สร้างโฟลเดอร์', `สร้าง "${folderName}" เรียบร้อย`);
@@ -371,7 +371,6 @@
         const resp = await apiGet('getFolders');
         if (!resp.success) throw new Error(resp.message||'ไม่สามารถดึงโฟลเดอร์ได้');
         folders = Array.isArray(resp.data) ? resp.data : [];
-        folders.sort((a,b) => new Date(b.createdDate) - new Date(a.createdDate));
         displayFolders();
         updateStatsFromFolders();
       } catch (e) {
@@ -390,31 +389,29 @@
           </div>`;
         return;
       }
-
       // ✅ เรียงจากวันที่สร้าง (createdDate) ใหม่สุดอยู่บน
   const sorted = [...folders].sort((a, b) => {
     const da = a?.createdDate ? new Date(a.createdDate).getTime() : 0;
     const db = b?.createdDate ? new Date(b.createdDate).getTime() : 0;
     return db - da; // desc
   });
-      
-      container.innerHTML = folders.map(folder => `
-        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer" onclick="selectFolder('${folder.id}')">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <i class="fas fa-folder text-blue-600 text-xl"></i>
-            </div>
-            <div>
-              <h4 class="font-semibold text-gray-800">${escapeHtml(folder.name)}</h4>
-              <p class="text-sm text-gray-600">${(folder.fileCount||0)} ไฟล์ • ${formatDate(folder.createdDate)}</p>
-            </div>
-          </div>
-          <div class="text-gray-400">
-            <i class="fas fa-chevron-right"></i>
-          </div>
+      container.innerHTML = sorted.map(folder => `
+    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer" onclick="selectFolder('${folder.id}')">
+      <div class="flex items-center space-x-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <i class="fas fa-folder text-blue-600 text-xl"></i>
         </div>
-      `).join('');
-    }
+        <div>
+          <h4 class="font-semibold text-gray-800">${escapeHtml(folder.name)}</h4>
+          <p class="text-sm text-gray-600">${(folder.fileCount||0)} ไฟล์ • ${formatDate(folder.createdDate)}</p>
+        </div>
+      </div>
+      <div class="text-gray-400">
+        <i class="fas fa-chevron-right"></i>
+      </div>
+    </div>
+  `).join('');
+}
 
     function selectFolder(folderId) {
       const folder = folders.find(f=>f.id===folderId);
