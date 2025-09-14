@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ระบบจัดการภาพ</title>
+  <title>ระบบจัดการภาพสำหรับครู</title>
 
-  <!-- UI libs (คงไว้ตามไฟล์เดิม) -->
+  <!-- UI libs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -38,15 +38,13 @@
             </div>
             <div>
               <h1 class="text-xl md:text-2xl font-bold text-gray-800">ระบบจัดการภาพ</h1>
-              
+              <p class="text-sm text-gray-600">สำหรับครู</p>
             </div>
           </div>
         </div>
-        <div class="flex items-center space-x-4">
-          <div class="hidden sm:flex items-center space-x-2 bg-green-100 px-3 py-2 rounded-full">
-            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-green-700 text-sm font-medium">ออนไลน์</span>
-          </div>
+        <div class="hidden sm:flex items-center space-x-2 bg-green-100 px-3 py-2 rounded-full">
+          <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          <span class="text-green-700 text-sm font-medium">ออนไลน์</span>
         </div>
       </div>
     </div>
@@ -61,7 +59,7 @@
           <div class="flex flex-col md:flex-row items-center justify-between">
             <div class="mb-4 md:mb-0">
               <h2 class="text-2xl md:text-3xl font-bold mb-2">ยินดีต้อนรับสู่ระบบจัดการภาพ</h2>
-              
+              <p class="text-blue-100">จัดเก็บและจัดการภาพและวีดีโอของคุณอย่างมีประสิทธิภาพ</p>
             </div>
             <div class="text-center">
               <div class="text-3xl md:text-4xl font-bold" id="totalFiles">0</div>
@@ -162,7 +160,7 @@
         </h3>
         <div id="recentActivity" class="space-y-3">
           <div class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <div class="W-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <i class="fas fa-info text-blue-600"></i>
             </div>
             <div>
@@ -226,17 +224,33 @@
   <!-- Upload Modal -->
   <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <!-- ========== HEADER (moved controls to top-right) ========== -->
       <div class="p-6 border-b border-gray-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-xl font-bold text-gray-800">อัพโหลดภาพและวีดีโอ</h3>
             <p class="text-gray-600 mt-1">โฟลเดอร์: <span id="currentFolderName" class="font-medium text-blue-600"></span></p>
           </div>
-          <button onclick="hideUploadModal()" class="text-gray-400 hover:text-gray-600">
-            <i class="fas fa-times text-xl"></i>
-          </button>
+
+          <!-- NEW: header controls -->
+          <div class="flex items-center space-x-3">
+            <div id="uploadHeaderControls" class="hidden flex items-center space-x-3">
+              <span class="text-sm text-gray-600">
+                <span id="uploadProgress">0</span> / <span id="uploadTotal">0</span> ไฟล์
+              </span>
+              <button id="startUploadBtn" onclick="startUpload()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-play mr-2"></i>เริ่มอัพโหลด
+              </button>
+            </div>
+            <button onclick="hideUploadModal()" class="text-gray-400 hover:text-gray-600">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
         </div>
       </div>
+      <!-- ========================================================= -->
+
       <div class="p-6">
         <!-- Upload Zone -->
         <div id="uploadZone" class="upload-zone rounded-xl p-8 text-center mb-6 cursor-pointer" onclick="document.getElementById('fileInput').click()">
@@ -252,22 +266,9 @@
         <div id="uploadQueue" class="hidden">
           <h4 class="text-lg font-semibold text-gray-800 mb-4">คิวการอัพโหลด</h4>
           <div id="uploadList" class="space-y-3 max-h-60 overflow-y-auto"></div>
-          <div class="mt-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-      <div id="uploadHeaderControls" class="hidden flex items-center space-x-3">
-        <span class="text-sm text-gray-600">
-          <span id="uploadProgress">0</span> / <span id="uploadTotal">0</span> ไฟล์
-        </span>
-        <button id="startUploadBtn" onclick="startUpload()"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-          <i class="fas fa-play mr-2"></i>เริ่มอัพโหลด
-        </button>
-      </div>
 
-      <button onclick="hideUploadModal()" class="text-gray-400 hover:text-gray-600">
-        <i class="fas fa-times text-xl"></i>
-      </button>
-    </div>
+          <!-- (REMOVED) footer controls moved to header -->
+          <!-- previously had progress + start button here -->
         </div>
       </div>
     </div>
@@ -276,12 +277,12 @@
   <!-- ======== APP SCRIPT INTEGRATION ======== -->
   <script>
     // ===== CONFIG =====
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxTZbCtjASb74Lyj7R1m_L0CPzXxkEjl_1SWCDJoOCaL5dIAfdkqbuuyaolU57hb54/exec'; // <- แปะ URL จาก Deploy
+    const SCRIPT_URL = 'PUT_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'; // <- ใส่ URL จาก Deploy
     const CLIENT_ALLOWED_TYPES = [
       'image/jpeg','image/jpg','image/png','image/gif','image/webp',
       'video/mp4','video/mov','video/avi','video/wmv','video/flv'
-    ]; // ให้สอดคล้องกับ Code.gs (CONFIG.ALLOWED_TYPES) :contentReference[oaicite:2]{index=2}
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB ตาม Code.gs :contentReference[oaicite:3]{index=3}
+    ];
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
     // ===== STATE =====
     let currentFolder = null;
@@ -289,7 +290,7 @@
     let isUploading = false;
     let folders = [];
 
-    // ===== UTIL: API WRAPPER (เลี่ยง CORS preflight ด้วย text/plain) =====
+    // ===== UTIL: API WRAPPER (หลบ CORS preflight ด้วย text/plain) =====
     async function apiGet(action, params = {}) {
       const q = new URLSearchParams({ action, ...params }).toString();
       const res = await fetch(`${SCRIPT_URL}?${q}`, { method: 'GET' });
@@ -299,7 +300,7 @@
     async function apiPost(payload) {
       const res = await fetch(SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, // simple request
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
         body: JSON.stringify(payload)
       });
       const txt = await res.text();
@@ -345,7 +346,21 @@
     function openFolderPicker(){ document.getElementById('folderListModal').classList.remove('hidden'); displayFolders(); }
     function hideFolderList(){ document.getElementById('folderListModal').classList.add('hidden'); }
     function showUploadModal(folder){ currentFolder = folder; document.getElementById('currentFolderName').textContent = folder.name; document.getElementById('uploadModal').classList.remove('hidden'); }
-    function hideUploadModal(){ document.getElementById('uploadModal').classList.add('hidden'); currentFolder=null; uploadQueue=[]; document.getElementById('uploadQueue').classList.add('hidden'); document.getElementById('fileInput').value=''; }
+    function hideUploadModal(){
+      document.getElementById('uploadModal').classList.add('hidden');
+      currentFolder=null;
+      uploadQueue=[];
+      document.getElementById('uploadQueue').classList.add('hidden');
+      document.getElementById('fileInput').value='';
+
+      // NEW: reset header controls
+      const headerCtrls = document.getElementById('uploadHeaderControls');
+      if (headerCtrls) headerCtrls.classList.add('hidden');
+      const up = document.getElementById('uploadProgress');
+      const ut = document.getElementById('uploadTotal');
+      if (up) up.textContent = '0';
+      if (ut) ut.textContent = '0';
+    }
 
     // ====== FOLDERS ======
     async function createFolder() {
@@ -456,7 +471,8 @@
       const container = document.getElementById('uploadList');
       const total = uploadQueue.length;
       document.getElementById('uploadTotal').textContent = total;
-      document.getElementById('uploadProgress').textContent = uploadQueue.filter(i=>i.status==='completed').length;
+      document.getElementById('uploadProgress').textContent =
+        uploadQueue.filter(i=>i.status==='completed').length;
 
       container.innerHTML = uploadQueue.map(item => `
         <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
@@ -476,6 +492,14 @@
           <div class="ml-4">${getStatusIcon(item.status)}</div>
         </div>
       `).join('');
+
+      // NEW: toggle header controls visibility
+      const headerCtrls = document.getElementById('uploadHeaderControls');
+      if (headerCtrls) {
+        if (total > 0) headerCtrls.classList.remove('hidden');
+        else headerCtrls.classList.add('hidden');
+      }
+
       updateUploadingCount();
     }
 
@@ -500,7 +524,7 @@
       isUploading = false;
       btn.disabled = false; btn.innerHTML = '<i class="fas fa-check mr-2"></i>อัพโหลดเสร็จสิ้น';
 
-      await loadFolders(); // refresh counter/fileCount
+      await loadFolders();
       await loadStats();
 
       if (fail === 0) {
@@ -516,9 +540,7 @@
       try {
         item.status='uploading'; item.progress=0; displayUploadQueue();
 
-        // อ่านไฟล์ -> base64 (ไม่เอา dataURL prefix)
         const base64 = await fileToBase64(item.file);
-        // progress ดูแบบ mock ระหว่างรอ network
         for (let p=10;p<=90;p+=20){ item.progress=p; displayUploadQueue(); await sleep(120); }
 
         const resp = await apiPost({
@@ -527,7 +549,7 @@
           fileName: item.name,
           fileType: item.type,
           fileSize: item.size,
-          fileData: base64 // ส่งเฉพาะส่วน base64 ตาม Code.gs ที่ใช้ Utilities.base64Decode(data) :contentReference[oaicite:4]{index=4}
+          fileData: base64
         });
         if (!resp.success) throw new Error(resp.message||'อัปโหลดไม่สำเร็จ');
 
@@ -548,7 +570,6 @@
       const totalFiles = folders.reduce((sum,f)=> sum + (Number(f.fileCount)||0), 0);
       document.getElementById('totalFolders').textContent = totalFolders;
       document.getElementById('totalFiles').textContent = totalFiles;
-      // แสดงสัดส่วนอย่างง่าย (ไม่เรียก getStats ก็ได้) — เดี๋ยวไปอัปเดตจริงจาก getStats อีกที
       document.getElementById('totalImages').textContent = Math.floor(totalFiles * 0.7);
       document.getElementById('totalVideos').textContent = Math.max(0, totalFiles - Math.floor(totalFiles * 0.7));
     }
@@ -557,7 +578,7 @@
       try {
         const resp = await apiGet('getStats');
         if (!resp.success || !resp.data) return;
-        const s = resp.data; // { totalFolders, totalFiles, totalImages, totalVideos, totalSize, lastActivity } :contentReference[oaicite:5]{index=5}
+        const s = resp.data;
         document.getElementById('totalFolders').textContent = s.totalFolders ?? '0';
         document.getElementById('totalFiles').textContent = s.totalFiles ?? '0';
         document.getElementById('totalImages').textContent = s.totalImages ?? '0';
@@ -584,11 +605,9 @@
           <p class="text-sm text-gray-600">${escapeHtml(description)}</p>
           <p class="text-xs text-gray-500">${new Date().toLocaleString('th-TH')}</p>
         </div>`;
-      // ลบ welcome เดิมถ้ามี
       const firstInfo = container.querySelector('.fas.fa-info');
       if (firstInfo) firstInfo.closest('.flex').remove();
       container.prepend(item);
-      // keep last 5
       while (container.children.length > 5) container.removeChild(container.lastChild);
     }
 
@@ -611,9 +630,8 @@
       return new Promise((resolve,reject)=>{
         const reader = new FileReader();
         reader.onload = () => {
-          // reader.result = "data:<mime>;base64,XXXX"
           const res = reader.result || '';
-          const base64 = res.includes(',') ? res.split(',')[1] : res; // ส่งเฉพาะส่วนหลัง comma ให้ตรงกับ Code.gs uploadFile() :contentReference[oaicite:6]{index=6}
+          const base64 = res.includes(',') ? res.split(',')[1] : res;
           resolve(base64);
         };
         reader.onerror = reject;
