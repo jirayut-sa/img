@@ -1,22 +1,28 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title></title>
+    <title>จัดการภาพ</title>
     <link rel="icon" type="image/png" href="https://i.postimg.cc/FKvMVwQz/image.png">
-<style>
-  /* ใช้ class */
-  .hidden-iframe {
-    display: none;
-  }
-
-  /* หรือใช้ ID */
-  #myHiddenFrame {
-    display: none;
-  }
-</style>
-</head>
-
+    <style>
+      /* ทำให้ iframe เต็มหน้าจอและไม่มีขอบ */
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+      }
+      iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+    </style>
+  </head>
   <body>
     <iframe src="https://script.google.com/macros/s/AKfycbw_2pv5IHz3MXgaclk8meqQWBnrHkYyAKmIjifK6PUFTNPIIxXniatgGYXdPAbs0PErag/exec"></iframe>
+
   </body>
 </html>
